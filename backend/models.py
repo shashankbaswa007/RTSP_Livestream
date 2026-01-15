@@ -140,6 +140,9 @@ def create_overlay(data):
         'content': data['content'],
         'position': data.get('position', {'x': 100, 'y': 100}),
         'size': data.get('size', {'width': 200, 'height': 100}),
+        'positionPercent': data.get('positionPercent'),  # Store percentage-based position
+        'sizePercent': data.get('sizePercent'),  # Store percentage-based size
+        'opacity': data.get('opacity', 1.0),  # Default to fully opaque (1.0)
         'createdAt': datetime.utcnow(),
         'updatedAt': datetime.utcnow()
     }
@@ -252,6 +255,12 @@ def update_overlay(overlay_id, data):
                 update_doc['size'] = data['size']
             if 'content' in data:
                 update_doc['content'] = data['content']
+            if 'opacity' in data:
+                update_doc['opacity'] = data['opacity']
+            if 'positionPercent' in data:
+                update_doc['positionPercent'] = data['positionPercent']
+            if 'sizePercent' in data:
+                update_doc['sizePercent'] = data['sizePercent']
             
             _temp_overlays[overlay_id].update(update_doc)
             logger.info(f"Updated in-memory overlay: {overlay_id}")
@@ -269,6 +278,15 @@ def update_overlay(overlay_id, data):
     
     if 'content' in data:
         update_doc['content'] = data['content']
+    
+    if 'opacity' in data:
+        update_doc['opacity'] = data['opacity']
+    
+    if 'positionPercent' in data:
+        update_doc['positionPercent'] = data['positionPercent']
+    
+    if 'sizePercent' in data:
+        update_doc['sizePercent'] = data['sizePercent']
     
     db = get_db_connection()
     if db is None:

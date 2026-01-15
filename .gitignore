@@ -1,20 +1,25 @@
-# Root .gitignore
+# Environment variables
+.env
+backend/.env
+frontend/.env
+frontend/.env.local
 
-# Backend
+# Python
 backend/__pycache__/
 backend/*.py[cod]
+backend/.venv/
 backend/venv/
-backend/.env
+.venv/
+*.log
+
+# Node.js
+frontend/node_modules/
+frontend/dist/
+
+# Streaming files
 backend/static/stream/*.m3u8
 backend/static/stream/*.ts
 
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-frontend/.env.local
-.env
-.env.example
 # IDE
 .vscode/
 .idea/
@@ -24,9 +29,6 @@ frontend/.env.local
 # OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log
 
 # Demo video (optional - remove if you want to commit video)
 *.mp4

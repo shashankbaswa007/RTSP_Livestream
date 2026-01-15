@@ -13,9 +13,13 @@ import { Play, Square } from 'lucide-react';
 export default function VideoPlayer({ overlays, onUpdateOverlay, onDeleteOverlay }) {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
+  const containerRef = useRef(null);
   const [rtspUrl, setRtspUrl] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedOverlayId, setSelectedOverlayId] = useState(null);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   /**
    * Initialize Video.js player
@@ -79,6 +83,17 @@ export default function VideoPlayer({ overlays, onUpdateOverlay, onDeleteOverlay
     setIsLoading(true);
 
     try {
+      // If it's an HTTP/HTTPS HLS URL, play directly without backend processing
+      if ((rtspUrl.startsWith('http://') || rtspUrl.startsWith('https://')) && 
+          (rtspUrl.includes('.m3u8') || rtspUrl.includes('.M3U8'))) {
+        toast.success('Playing HLS stream directly...');
+        initializePlayer(rtspUrl);
+        setIsPlaying(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // For RTSP or non-HLS HTTP URLs, use backend conversion
       const response = await streamAPI.start(rtspUrl);
 
       if (response.success) {
@@ -126,6 +141,24 @@ export default function VideoPlayer({ overlays, onUpdateOverlay, onDeleteOverlay
   };
 
   /**
+   * Handle keyboard shortcuts
+   */
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Delete key removes selected overlay
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedOverlayId) {
+        e.preventDefault();
+        onDeleteOverlay(selectedOverlayId);
+        setSelectedOverlayId(null);
+        toast.success('Overlay deleted');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedOverlayId, onDeleteOverlay]);
+
+  /**
    * Cleanup on component unmount
    */
   useEffect(() => {
@@ -137,84 +170,203 @@ export default function VideoPlayer({ overlays, onUpdateOverlay, onDeleteOverlay
     };
   }, []);
 
+  /**
+   * Move overlay container into fullscreen element when entering fullscreen
+   */
+  useEffect(() => {
+    if (!playerRef.current || !isPlaying) return;
+
+    const moveOverlaysToFullscreen = () => {
+      const overlayContainer = document.getElementById('overlay-container-wrapper');
+      if (!overlayContainer) return;
+
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+      
+      if (fullscreenElement && playerRef.current) {
+        // In fullscreen: move overlay container to fullscreen element
+        const playerEl = playerRef.current.el();
+        if (playerEl && !playerEl.contains(overlayContainer)) {
+          playerEl.appendChild(overlayContainer);
+        }
+      } else {
+        // Exiting fullscreen: move overlay container back to original parent
+        if (containerRef.current && !containerRef.current.contains(overlayContainer)) {
+          containerRef.current.appendChild(overlayContainer);
+        }
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      setTimeout(moveOverlaysToFullscreen, 50); // Small delay to ensure DOM is ready
+    };
+
+    // Listen for fullscreen changes
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+    if (playerRef.current) {
+      playerRef.current.on('fullscreenchange', handleFullscreenChange);
+    }
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      if (playerRef.current) {
+        playerRef.current.off('fullscreenchange', handleFullscreenChange);
+      }
+    };
+  }, [isPlaying]);
+
+  /**
+   * Track container dimensions for percentage-based positioning
+   */
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const updateDimensions = () => {
+      // Check if in fullscreen
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+      const inFullscreen = !!fullscreenElement;
+      setIsFullscreen(inFullscreen);
+
+      if (inFullscreen && playerRef.current) {
+        // In fullscreen: get dimensions from video player element
+        const playerEl = playerRef.current.el();
+        if (playerEl) {
+          const { width, height } = playerEl.getBoundingClientRect();
+          setContainerDimensions({ width, height });
+          return;
+        }
+      }
+
+      // Not in fullscreen: use container dimensions
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        setContainerDimensions({ width, height });
+      }
+    };
+
+    // Initial measurement
+    updateDimensions();
+
+    // Use ResizeObserver to track all size changes (including fullscreen)
+    const resizeObserver = new ResizeObserver(updateDimensions);
+    resizeObserver.observe(containerRef.current);
+
+    // Also listen for fullscreen changes
+    const handleFullscreenChange = () => {
+      setTimeout(updateDimensions, 100); // Small delay for layout to settle
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    
+    // Listen to Video.js fullscreen events
+    if (playerRef.current) {
+      playerRef.current.on('fullscreenchange', handleFullscreenChange);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      if (playerRef.current) {
+        playerRef.current.off('fullscreenchange', handleFullscreenChange);
+      }
+    };
+  }, []);
+
   return (
-    <div className="bg-gradient-to-br from-gray-800 via-gray-850 to-gray-900 rounded-2xl p-6 shadow-2xl border border-gray-700">
+    <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
       {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-white flex items-center gap-3 mb-2">
-          <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></div>
+      <div className="mb-4">
+        <h2 className="text-lg font-medium text-white flex items-center gap-2 mb-1">
+          <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-green-500' : 'bg-gray-500'}`}></div>
           Video Stream
         </h2>
-        <p className="text-gray-400 text-sm">
-          {isPlaying ? '🔴 Live streaming' : 'Ready to stream'}
+        <p className="text-gray-400 text-xs">
+          {isPlaying ? 'Streaming' : 'Ready'}
+          {isPlaying && <span className="ml-2 text-gray-500">• <kbd className="px-1.5 py-0.5 bg-gray-900 rounded border border-gray-700 text-xs font-mono">Del</kbd> to remove overlay</span>}
         </p>
       </div>
 
       {/* Stream control section */}
       {!isPlaying && (
-        <div className="mb-6 space-y-3">
+        <div className="mb-4 space-y-2">
           <input
             type="text"
             value={rtspUrl}
             onChange={(e) => setRtspUrl(e.target.value)}
-            placeholder="Enter RTSP URL (e.g., rtsp://rtsp.stream/pattern)"
-            className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder-gray-500"
+            placeholder="Enter stream URL..."
+            className="w-full px-3 py-2 bg-gray-900 text-white rounded-md border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder-gray-500 text-sm"
             disabled={isLoading}
           />
           <button
             onClick={startStream}
             disabled={isLoading}
-            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-500/30 transform hover:scale-[1.02]"
+            className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
           >
-            <Play size={20} className={isLoading ? 'animate-pulse' : ''} />
+            <Play size={16} />
             {isLoading ? 'Starting Stream...' : 'Start Stream'}
           </button>
         </div>
       )}
 
       {/* Video player container with overlays */}
-      <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700" style={{ minHeight: '400px' }}>
+      <div 
+        ref={containerRef}
+        className="relative bg-black rounded-md overflow-hidden border border-gray-700" 
+        style={{ minHeight: '400px' }}
+      >
         <video
           ref={videoRef}
           className="video-js vjs-big-play-centered w-full"
+          style={{ width: '100%', height: '100%' }}
         />
 
-        {/* Render overlays on top of video */}
-        {isPlaying && overlays.map((overlay) => (
-          <Overlay
-            key={overlay.id}
-            overlay={overlay}
-            onUpdate={onUpdateOverlay}
-            onDelete={onDeleteOverlay}
-          />
-        ))}
+        {/* Overlay container wrapper - gets moved into fullscreen element */}
+        {isPlaying && (
+          <div 
+            id="overlay-container-wrapper"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              pointerEvents: 'none',
+              zIndex: 9999, // Very high z-index to ensure visibility above video controls
+            }}
+          >
+            {overlays.map((overlay) => (
+              <Overlay
+                key={overlay.id}
+                overlay={overlay}
+                onUpdate={onUpdateOverlay}
+                onDelete={onDeleteOverlay}
+                onSelect={setSelectedOverlayId}
+                containerDimensions={containerDimensions}
+              />
+            ))}
+          </div>
+        )}
 
         {/* Empty state */}
         {!isPlaying && !isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
             <div className="text-center px-6">
-              <div className="relative inline-block mb-6">
-                <Play className="w-20 h-20 text-blue-400 animate-pulse" />
-                <div className="absolute inset-0 bg-blue-500 blur-xl opacity-30 animate-pulse"></div>
-              </div>
-              <p className="text-white text-xl font-semibold mb-3">No stream active</p>
-              <p className="text-gray-400 text-sm max-w-md">
-                Enter an RTSP URL above and click <span className="text-blue-400 font-medium">Start Stream</span> to begin
-              </p>
+              <Play className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 text-sm">No stream active</p>
+              <p className="text-gray-600 text-xs mt-1">Enter a URL above to start streaming</p>
             </div>
           </div>
         )}
 
         {/* Loading state */}
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900/95 via-gray-800/95 to-gray-900/95 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/95">
             <div className="text-center">
-              <div className="relative inline-block mb-6">
-                <div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"></div>
-                <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
-              </div>
-              <p className="text-white text-lg font-medium mb-2">Initializing stream...</p>
-              <p className="text-gray-400 text-sm">Please wait while we connect to the RTSP source</p>
+              <div className="w-10 h-10 border-3 border-gray-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-3"></div>
+              <p className="text-gray-400 text-sm">Connecting...</p>
             </div>
           </div>
         )}
@@ -225,10 +377,10 @@ export default function VideoPlayer({ overlays, onUpdateOverlay, onDeleteOverlay
         <button
           onClick={stopStream}
           disabled={isLoading}
-          className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-red-500/30 transform hover:scale-[1.02]"
+          className="w-full mt-3 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
         >
-          <Square size={20} />
-          {isLoading ? 'Stopping Stream...' : 'Stop Stream'}
+          <Square size={16} />
+          {isLoading ? 'Stopping...' : 'Stop Stream'}
         </button>
       )}
     </div>

@@ -116,42 +116,38 @@ function App() {
         }}
       />
 
-      {/* Header with gradient */}
-      <header className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700 shadow-2xl backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+      {/* Header */}
+      <header className="bg-gray-900 border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-semibold text-white">
                 RTSP Livestream Overlay
               </h1>
-              <p className="text-gray-400 text-sm mt-2 flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Stream RTSP video with customizable overlays
+              <p className="text-gray-400 text-sm mt-1">
+                Stream video with customizable overlays
               </p>
             </div>
-            <div className="hidden md:flex items-center gap-3 text-xs text-gray-500">
-              <span className="px-3 py-1 bg-gray-800 rounded-full border border-gray-700">React</span>
-              <span className="px-3 py-1 bg-gray-800 rounded-full border border-gray-700">Flask</span>
-              <span className="px-3 py-1 bg-gray-800 rounded-full border border-gray-700">MongoDB</span>
+            <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
+              <span className="px-3 py-1.5 bg-gray-800 rounded-md border border-gray-700">React</span>
+              <span className="px-3 py-1.5 bg-gray-800 rounded-md border border-gray-700">Flask</span>
+              <span className="px-3 py-1.5 bg-gray-800 rounded-md border border-gray-700">MongoDB</span>
             </div>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-6">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-gray-700 border-t-blue-500 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-500 rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1s' }}></div>
-            </div>
-            <p className="text-white text-lg mt-6 animate-pulse">Loading application...</p>
+            <div className="w-12 h-12 border-3 border-gray-700 border-t-blue-500 rounded-full animate-spin"></div>
+            <p className="text-gray-400 text-sm mt-4">Loading application...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Video player section - 2/3 width on large screens */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="lg:col-span-2">
               <VideoPlayer
                 overlays={overlays}
                 onUpdateOverlay={handleUpdateOverlay}
@@ -160,7 +156,7 @@ function App() {
             </div>
 
             {/* Controls sidebar - 1/3 width on large screens */}
-            <div className="space-y-6">
+            <div className="space-y-5">
               <OverlayControls onCreateOverlay={handleCreateOverlay} />
               <OverlayList
                 overlays={overlays}
@@ -171,14 +167,11 @@ function App() {
         )}
       </main>
 
-      {/* Footer with gradient */}
-      <footer className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-t border-gray-700 mt-12 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <p className="text-gray-400 text-sm text-center">
-            Built with ❤️ using React, Flask, Video.js, and MongoDB
-          </p>
-          <p className="text-gray-600 text-xs text-center mt-2">
-            © 2026 RTSP Livestream Overlay Application
+      {/* Footer */}
+      <footer className="bg-gray-900 border-t border-gray-800 mt-12">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <p className="text-gray-500 text-xs text-center">
+            Built with React, Flask, Video.js, and MongoDB
           </p>
         </div>
       </footer>
