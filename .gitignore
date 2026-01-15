@@ -1,0 +1,33 @@
+# Root .gitignore
+
+# Backend
+backend/__pycache__/
+backend/*.py[cod]
+backend/venv/
+backend/.env
+backend/static/stream/*.m3u8
+backend/static/stream/*.ts
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Demo video (optional - remove if you want to commit video)
+*.mp4
+*.mov
+*.avi

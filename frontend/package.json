@@ -1,0 +1,27 @@
+{
+  "name": "rtsp-overlay-frontend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Frontend for RTSP Livestream Overlay Application",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "video.js": "^8.10.0",
+    "react-rnd": "^10.4.1",
+    "axios": "^1.6.5",
+    "react-hot-toast": "^2.4.1",
+    "lucide-react": "^0.263.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "vite": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "postcss": "^8.4.32",
+    "autoprefixer": "^10.4.16"
+  }
+}
